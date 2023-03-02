@@ -196,11 +196,11 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 	G4double StrHeight = 7 * mm;
 
 	G4double TdlrLength = StrLength;
-	G4double TdlrWidth = StrWidth + 0.1 * mm;
-	G4double TdlrHeight = StrHeight + 0.1 * mm;
+	G4double TdlrWidth = StrWidth + 0.2 * mm;
+	G4double TdlrHeight = StrHeight + 0.2 * mm;
 
 	//Hole in strip
-	G4double HoleLength = StrLength + 0.01 * mm;
+	G4double HoleLength = StrLength + 0.1 * mm;
 	G4double HoleWidth = 1.5 * mm;
 	G4double HoleHeight = 4 * mm;
 	G4RotationMatrix* HoleRot = new G4RotationMatrix;
@@ -214,21 +214,24 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 
 	G4double OptPos_Z = 0.5 * (StrHeight - HoleHeight) + OptRad;
 
-	//Photomultiplier
-	G4double GlassRad = 1.5 * mm;
-	G4double GlassHeight = 1 * mm;
+	//Variables for creating copies
+	G4int NRows = 96, NLvls = 2, NCoord = 3;
+	G4int row, level, coord;
+	G4int StrNCopy = 0, TdlrNCopy = 0, OptNCopy = 0;
+	G4double GapH = 0.1 * mm;
 
-	G4double PhotRad = GlassRad;
-	G4double PhotHeight = 0.1 * mm;
+	G4double XStr = 0 * mm;
+	G4double YStr = -(0.5 * NRows * TdlrWidth + (0.5 * NRows - 1) * GapH + 0.5 * GapH) + 0.5 * TdlrWidth;
+	G4double ZStr = 0.5 * TdlrHeight;
+	
+	G4double XOpt = XStr;
+	G4double YOpt = YStr;
+	G4double ZOpt = TdlrHeight - 0.5 * (TdlrHeight - StrHeight) - 0.5 * HoleHeight) + OptRad;
 
-	G4double BodyRad = GlassRad + 0.1 * mm;
-	G4double BodyHeight = GlassHeight + PhotHeight;
-
-	G4RotationMatrix* BodyRot = new G4RotationMatrix;
-	BodyRot->rotateY(90. * deg);
+	G4double Str_X, Str_Y, Str_Z, Opt_X, Opt_Y, Opt_Z;
 
 	//Single strip
-	G4Box* solidTdlr = new G4Box("tdlr_s", 0.5 * TdlrLength, 0.5 * TdlrWidth, 0.5 * TdlrHeight);
+	/* G4Box* solidTdlr = new G4Box("tdlr_s", 0.5 * TdlrLength, 0.5 * TdlrWidth, 0.5 * TdlrHeight);
 	G4LogicalVolume* logicTdlr = new G4LogicalVolume(solidTdlr, PVF, "tdlr_l");
 	G4VPhysicalVolume* physTdlr = new G4PVPlacement(0, G4ThreeVector(), logicTdlr, "TEDLAR", logicWorld, false, 0, checkOverlaps);
 
@@ -236,9 +239,9 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 	G4Box* solidHole = new G4Box("hole_s", 0.5 * HoleLength, 0.5 * HoleWidth, 0.5 * HoleHeight);
 
 	G4ThreeVector trans(0., 0., 0.5 * StrHeight);
-	G4SubtractionSolid* solidScintplate1 = new G4SubtractionSolid("solid_strip", solidStrip, solidHole, HoleRot, trans);
+	G4SubtractionSolid* solidStr = new G4SubtractionSolid("solid_strip", solidStrip, solidHole, HoleRot, trans);
 
-	G4LogicalVolume* logicStrip = new G4LogicalVolume(solidTdlr, STR, "strip_l");
+	G4LogicalVolume* logicStrip = new G4LogicalVolume(solidStr, STR, "strip_l");
 	G4VPhysicalVolume* physStrip = new G4PVPlacement(0, G4ThreeVector(), logicStrip, "STRIP", logicTdlr, false, 0, checkOverlaps);
 
 	G4Tubs* solidCov = new G4Tubs("Cov_s", 0, OptRad, 0.5 * OptHeight, 0. * deg, 360. * deg);
@@ -247,8 +250,22 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 
 	G4Tubs* solidCore = new G4Tubs("core_s", 0, OptRad - CovThickness, 0.5 * OptHeight, 0. * deg, 360. * deg);
 	G4LogicalVolume* logicCore = new G4LogicalVolume(solidCore, PS, "core_l");
-	G4VPhysicalVolume* physCore = new G4PVPlacement(0, G4ThreeVector(0., 0., 0.), logicCore, "CORE", logicCov, false, 0, checkOverlaps);
+	G4VPhysicalVolume* physCore = new G4PVPlacement(0, G4ThreeVector(0., 0., 0.), logicCore, "CORE", logicCov, false, 0, checkOverlaps); */
 	
+	//Volumes
+	G4Box* solidTdlr = { NULL }, * solidStr = { NULL }, * solidHole = { NULL };
+	G4Tubs* solidCore = { NULL }, * solidCov = { NULL };
+	G4LogicalVolume* logicTdlr = { NULL }, * logicStrip = { NULL }, * logicCov = { NULL },
+		* logicCore = { NULL };
+	G4VPhysicalVolume*;
+
+	//Coordinate planes
+
+
+	for (row = 0; row < NRows; row++)
+	{
+
+	}
 
 	//Making world invisible
 	auto UniverseVisAtt = new G4VisAttributes(G4Colour(1.0, 1.0, 1.0));
