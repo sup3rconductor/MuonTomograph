@@ -7,204 +7,103 @@
 #include "G4ParticleGun.hh"
 #include "G4ParticleTable.hh"
 #include "G4ParticleDefinition.hh"
+#include "G4SystemOfUnits.hh"
 #include "Randomize.hh"
+#include "G4PhysicalConstants.hh"
 
-extern G4int Nevent;
-extern FILE *st, *spectr, *stMu, *stEl, *stPr, *stPi;
-extern G4double mpi;
+G4double theta, phi, ux, uy, uz, E0;
+G4double x_rand, y_rand, z, x_up, y_up, z_up;
+char fpartname[7];
+G4int fEvent, fpartnum;
+G4double ftheta, fphi, fEkin;
 
-G4double zw1=3.85, xw1=9, yw1=15.5, xw2=-9, yw2=15.5, xw3=-9,
-         yw3=-15.5, xw4=9, yw4=-15.5, fi1, fi2, fi3, fi4, xp, yp, zp;
 
-G4String TypePart[9]={"mu+", "mu-", "pi+", "pi-", "e+", "e-", "proton", "neutron", "gamma"};
+//extern G4double ShellLength, ShellWidth, ShellHeight, ShellThickness, GapH, GapV, GapFP, ScrHeight;
+extern G4double Z0const;
+extern FILE* rdata;
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 DetPrimaryGeneratorAction::DetPrimaryGeneratorAction()
-: G4VUserPrimaryGeneratorAction(),
-  fParticleGun(0)
+	: G4VUserPrimaryGeneratorAction(),
+	fParticleGun(0)
 {
-  G4int n_particle = 1;
-  fParticleGun  = new G4ParticleGun(n_particle);
+	G4int n_particle = 1;
+	fParticleGun = new G4ParticleGun(n_particle);
 
-  // default particle kinematic
-  G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
-  G4String particleName;
-  G4ParticleDefinition* particle
-    = particleTable->FindParticle(particleName="mu-"); 
-  fParticleGun->SetParticleDefinition(particle);
-  fParticleGun->SetParticleMomentumDirection(G4ThreeVector(0.,0.,-1.));
-  fParticleGun->SetParticleEnergy(3.*GeV);    
+	// default particle kinematic
+	G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
+	G4String particleName;
+	G4ParticleDefinition* particle = particleTable->FindParticle(particleName = "mu+");
+	fParticleGun->SetParticleDefinition(particle);
+	fParticleGun->SetParticleMomentumDirection(G4ThreeVector(0., 0., -1.));
+	fParticleGun->SetParticleEnergy(4. * GeV);
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 DetPrimaryGeneratorAction::~DetPrimaryGeneratorAction()
 {
-  delete fParticleGun;
+	delete fParticleGun;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 void DetPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 {
-  G4int Tip;  
-  G4double xv, yv, zv, xn, yn, zn, ga, yz, Len, tx, ty, tz, p; 
-  G4double  xx, yy, zz, xxs, yys, zzs, zps, xps, yps, xns, yns, zns, xls,
-            yls, zls, xvs, yvs, zvs;
-  G4double TetaGr, FiGr, Energy;
-  char FName[500], PN[50];
-  G4String NameOfPart;
-    
-  fscanf(spectr,"%d\t%s\t%d\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\n",
-		 &Nevent, &PN, &Tip, &TetaGr, &FiGr, &Energy, &xx, &yy, &zz);
-  
-  stMu = NULL;
-  stEl = NULL;
-  stPr = NULL;
-  stPi = NULL;
-  
-  fi1 =       atan(fabs((yw1-yy)/(xw1-xx)))*180.0/mpi;
-  fi2 = 180 - atan(fabs((yw2-yy)/(xw2-xx)))*180.0/mpi;
-  fi3 = 180 + atan(fabs((yw3-yy)/(xw3-xx)))*180.0/mpi;
-  fi4 = 360 - atan(fabs((yw4-yy)/(xw4-xx)))*180.0/mpi;
+	//Maximal and minimal X coordinate for modelling light gathering
+	//G4double x_min = -ShellLength + ShellThickness + GapFP;
+	//G4double x_max = 0 * mm;
+	G4double x_min = (- 200 * 2 - 100 - 0.11 * 2) * mm;
+	G4double x_max = 0 * mm;
 
+	//Maximal and minimal Y coordinate for modelling light gathering
+	//G4double y_min = -ShellWidth + ShellThickness + GapFP;
+	//G4double y_max = ShellWidth - ShellThickness - GapFP;
+	G4double y_min = (-200 * 2 - 100 - 0.11 * 2) * mm;
+	G4double y_max = (200 * 2 + 100 + 0.11 * 2) * mm;
 
-  if(TetaGr>1)
-  {    
-    if(FiGr>=fi1 && FiGr<=fi2) 
-    {
-      zps=((yw1-yy)/(sin(TetaGr*mpi/180)*sin(FiGr*mpi/180)))*cos(TetaGr*mpi/180)+zz;
-      if(zps<zw1)
-      {
-       	xps=((yw1-yy)/sin(FiGr*mpi/180))*cos(FiGr*mpi/180)+xx; 
-        yps=yw1;
-          
-        xxs=xps;
-        yys=yps;
-        zzs=zps;
-      } 
-      else
-      {
-        xp=((zw1-zz)/cos(TetaGr*mpi/180))*sin(TetaGr*mpi/180)*cos(FiGr*mpi/180)+xx;
-        yp=((zw1-zz)/cos(TetaGr*mpi/180))*sin(TetaGr*mpi/180)*sin(FiGr*mpi/180)+yy; 
-        zp=zw1;
-           
-        xxs=xp;
-        yys=yp;
-        zzs=zp;
-      }   
-    }
-     
-    if(FiGr>=fi2 && FiGr<=fi3)
-    {
-      zns=((xw2-xx)/(sin(TetaGr*mpi/180)*cos(FiGr*mpi/180)))*cos(TetaGr*mpi/180)+zz;
-     
-      if(zns<zw1)
-      {
-        yns=((xw2-xx)/cos(FiGr*mpi/180))*sin(FiGr*mpi/180)+yy; 
-        xns=xw2;
-           
-        xxs=xns;
-        yys=yns;
-        zzs=zns;
-      }
-      else
-      {
-        xp=((zw1-zz)/cos(TetaGr*mpi/180))*sin(TetaGr*mpi/180)*cos(FiGr*mpi/180)+xx;
-        yp=((zw1-zz)/cos(TetaGr*mpi/180))*sin(TetaGr*mpi/180)*sin(FiGr*mpi/180)+yy; 
-        zp=zw1;
-           
-        xxs=xp;
-        yys=yp;
-        zzs=zp;
-      }
-                 
-    }    
-     
-    if(FiGr>=fi3 && FiGr<=fi4)
-    {
-      zls=((yw3-yy)/(sin(TetaGr*mpi/180)*sin(FiGr*mpi/180)))*cos(TetaGr*mpi/180)+zz;
-      if(zls<zw1)
-      {
-        xls=((yw3-yy)/sin(FiGr*mpi/180))*cos(FiGr*mpi/180)+xx; 
-        yls=yw3;
-           
-        xxs=xls;
-        yys=yls;
-        zzs=zls;
-      }
-      else
-      {
-        xp=((zw1-zz)/cos(TetaGr*mpi/180))*sin(TetaGr*mpi/180)*cos(FiGr*mpi/180)+xx;
-        yp=((zw1-zz)/cos(TetaGr*mpi/180))*sin(TetaGr*mpi/180)*sin(FiGr*mpi/180)+yy; 
-        zp=zw1;
-           
-        xxs=xp;
-        yys=yp;
-        zzs=zp;
-      }       
-    } 
-    
-       
-    if( (FiGr>=0 && FiGr<=fi1) || (FiGr>=fi4 && FiGr<=360))//!!!!!!!!!
-    {
-  	  zvs=((xw4-xx)/(sin(TetaGr*mpi/180)*cos(FiGr*mpi/180)))*cos(TetaGr*mpi/180)+zz;
-      if(zvs<zw1)
-      {
-        yvs=((xw4-xx)/cos(FiGr*mpi/180))*sin(FiGr*mpi/180)+yy; 
-        xvs=xw4;
-      
-        xxs=xvs;
-        yys=yvs;
-        zzs=zvs;
-      }
-      else
-      {
-        xp=((zw1-zz)/cos(TetaGr*mpi/180))*sin(TetaGr*mpi/180)*cos(FiGr*mpi/180)+xx;
-        yp=((zw1-zz)/cos(TetaGr*mpi/180))*sin(TetaGr*mpi/180)*sin(FiGr*mpi/180)+yy; 
-        zp=zw1;
-           
-        xxs=xp;
-        yys=yp;
-        zzs=zp;
-      }       
-    }
-  }
-  else
-  {
-    xp=((zw1-zz)/cos(TetaGr*mpi/180))*sin(TetaGr*mpi/180)*cos(FiGr*mpi/180)+xx;
-    yp=((zw1-zz)/cos(TetaGr*mpi/180))*sin(TetaGr*mpi/180)*sin(FiGr*mpi/180)+yy; 
-    zp=zw1;
-           
-    xxs=xp;
-    yys=yp;
-    zzs=zp;
-  }
+	//Z coordinate of 5th lvl for modelling light gathering
+	//G4double z_mid = ShellHeight - GapFP - 4 * (ScrHeight + GapV) - 0.5 * ScrHeight;
+	G4double z_mid = - 0.5 * (0.11 + 5) * mm;
 
-  Len = sqrt( (xx-xxs)*(xx-xxs) + (yy-yys)*(yy-yys) + (zz-zzs)*(zz-zzs) );
+	//Random coordinares
+	x_rand = x_min + (x_max - x_min) * G4UniformRand();
+	y_rand = y_min + (y_max - y_min) * G4UniformRand();
+	z = z_mid;
 
-  tx = (xx-xxs)/Len;
-  ty = (yy-yys)/Len;
-  tz = (zz-zzs)/Len;
+	//teta = acos(pow((1+G4UniformRand()*(pow(cos(15*twopi/360),4.2)-1)), 1/4.2));
+	//phi = twopi*G4UniformRand();
 
-  fParticleGun->SetParticleMomentumDirection(G4ThreeVector(tx, ty, tz));
-  fParticleGun->SetParticlePosition(G4ThreeVector(xxs*m,yys*m,zzs*m));
+	//Getting particles data from file
+	fscanf(rdata, "%d\t%s\t%d\t%lf\t%lf\t%lf\n", &fEvent, &fpartname, &fpartnum, &ftheta, &fphi, &fEkin);
+	G4cout << "Number of event: " << fEvent << "\tParticle type: " << fpartnum << "\tTheta angle: "<< ftheta << "\tPhi angle: " << fphi << "\tKinetic energy: " << fEkin << G4endl;
 
-  G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
-  G4ParticleDefinition* particle
-    = particleTable->FindParticle(TypePart[Tip]);
-  fParticleGun->SetParticleDefinition(particle);
+	//Angles in radians
+	theta = ftheta * pi / 180.0;
+	phi = fphi * pi / 180.0;
 
-  fParticleGun->SetParticleEnergy(Energy*GeV);
+	//Launching positively charged muons
+	G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
+	G4ParticleDefinition* particle = particleTable->FindParticle(fpartname);
+	fParticleGun->SetParticleDefinition(particle);
 
-  fprintf(st,"%d\t%s\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\n", Nevent, TypePart[Tip].c_str(), TetaGr, FiGr, Energy, xx, yy, zz);
-  fflush(st);
+	//Launching position
+	x_up = x_rand + 150 * cm * sin(theta) * cos(phi);
+	y_up = y_rand + 150 * cm * sin(theta) * sin(phi);
+	z_up = z + 150 * cm * cos(theta); 
 
-  fParticleGun->GeneratePrimaryVertex(anEvent); 
+	fParticleGun->SetParticlePosition(G4ThreeVector(x_up, y_up, z_up));
 
-  G4cout<<"Nevent"<<'\t'<<Nevent<<G4endl;
+	//Momentum direction
+	ux = -sin(theta) * cos(phi);
+	uy = -sin(theta) * sin(phi);
+	uz = -cos(theta);
 
+	fParticleGun->SetParticleMomentumDirection(G4ThreeVector(ux, uy, uz));
+
+	fParticleGun->SetParticleEnergy(fEkin * GeV);
+	fParticleGun->GeneratePrimaryVertex(anEvent);
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
