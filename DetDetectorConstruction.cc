@@ -224,7 +224,7 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 
 	G4double XOpt = 0 * mm;
 	G4double YOpt = 0 * mm;
-	G4double ZOpt = 0.5 * (StrHeight - HoleHeight) + OptRad + 0.1 * mm;
+	G4double ZOpt = 0.5 * (StrHeight - HoleHeight) + OptRad + 0.02 * mm;
 
 	G4double Str_X, Str_Y, Str_Z, Opt_X, Opt_Y, Opt_Z;
 
@@ -234,7 +234,7 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 	G4Tubs* solidCore[NRows] = { NULL }, * solidCov[NRows] = { NULL };
 	G4LogicalVolume* logicTdlr[NRows] = { NULL }, * logicStrip[NRows] = { NULL }, * logicCov[NRows] = { NULL },
 		* logicCore[NRows] = { NULL };
-	G4VPhysicalVolume* physTdlr[NRows] = { NULL }, * physStrip[NRows] = { NULL }, * physCov[NRows] = { NULL }, 
+	G4VPhysicalVolume* physTdlr[NRows] = { NULL }, * physStrip[NRows] = { NULL }, * physCov[NRows] = { NULL },
 		* physCore[NRows] = { NULL };
 	G4SubtractionSolid* solidStr = { NULL };
 
@@ -258,14 +258,14 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 
 		solidCov[row] = new G4Tubs("Cov_s", 0, OptRad, 0.5 * OptHeight, 0. * deg, 360. * deg);
 		logicCov[row] = new G4LogicalVolume(solidCov[row], PMMA, "Cov_l");
-		physCov[row] = new G4PVPlacement(OptRot, G4ThreeVector(Opt_X, Opt_Y, Opt_Z), logicCov[row], "COVER", logicStrip[row], false, OptCovNCopy, checkOverlaps);
+		physCov[row] = new G4PVPlacement(OptRot, G4ThreeVector(Opt_X, Opt_Y, Opt_Z), logicCov[row], "COVER", logicTdlr[row], false, OptCovNCopy, checkOverlaps);
 
 		solidCore[row] = new G4Tubs("core_s", 0, OptRad - CovThickness, 0.5 * OptHeight, 0. * deg, 360. * deg);
 		logicCore[row] = new G4LogicalVolume(solidCore[row], PS, "core_l");
 		physCore[row] = new G4PVPlacement(0, G4ThreeVector(0., 0., 0.), logicCore[row], "CORE", logicCov[row], false, OptCoreNCopy, checkOverlaps);
 
 		Str_Y += distance;
-		
+
 		StrNCopy++;
 		TdlrNCopy++;
 		OptCoreNCopy++;
