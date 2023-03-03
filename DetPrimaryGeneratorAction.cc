@@ -12,7 +12,7 @@
 #include "G4PhysicalConstants.hh"
 
 G4double theta, phi, ux, uy, uz, E0;
-G4double x_rand, y_rand, z, x_up, y_up, z_up;
+G4double x, y, z, x0, yy0, z0;
 char fpartname[7];
 G4int fEvent, fpartnum;
 G4double ftheta, fphi, fEkin;
@@ -51,58 +51,41 @@ DetPrimaryGeneratorAction::~DetPrimaryGeneratorAction()
 
 void DetPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 {
-	//Maximal and minimal X coordinate for modelling light gathering
-	//G4double x_min = -ShellLength + ShellThickness + GapFP;
-	//G4double x_max = 0 * mm;
-	G4double x_min = (- 200 * 2 - 100 - 0.11 * 2) * mm;
-	G4double x_max = 0 * mm;
+	//Particle coordinates
+	x = -400 + 800 * G4UniformRand();
+	y = 400 * G4UniformRand();
+	z = Z0const;
 
-	//Maximal and minimal Y coordinate for modelling light gathering
-	//G4double y_min = -ShellWidth + ShellThickness + GapFP;
-	//G4double y_max = ShellWidth - ShellThickness - GapFP;
-	G4double y_min = (-200 * 2 - 100 - 0.11 * 2) * mm;
-	G4double y_max = (200 * 2 + 100 + 0.11 * 2) * mm;
-
-	//Z coordinate of 5th lvl for modelling light gathering
-	//G4double z_mid = ShellHeight - GapFP - 4 * (ScrHeight + GapV) - 0.5 * ScrHeight;
-	G4double z_mid = - 0.5 * (0.11 + 5) * mm;
-
-	//Random coordinares
-	x_rand = x_min + (x_max - x_min) * G4UniformRand();
-	y_rand = y_min + (y_max - y_min) * G4UniformRand();
-	z = z_mid;
-
-	//teta = acos(pow((1+G4UniformRand()*(pow(cos(15*twopi/360),4.2)-1)), 1/4.2));
-	//phi = twopi*G4UniformRand();
-
-	//Getting particles data from file
+	//Scanning particle data from file
 	fscanf(rdata, "%d\t%s\t%d\t%lf\t%lf\t%lf\n", &fEvent, &fpartname, &fpartnum, &ftheta, &fphi, &fEkin);
-	G4cout << "Number of event: " << fEvent << "\tParticle type: " << fpartnum << "\tTheta angle: "<< ftheta << "\tPhi angle: " << fphi << "\tKinetic energy: " << fEkin << G4endl;
 
-	//Angles in radians
+	//Converting degrees to radians
 	theta = ftheta * pi / 180.0;
 	phi = fphi * pi / 180.0;
 
-	//Launching positively charged muons
+	//Setting type of particle to a particle gun
 	G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
 	G4ParticleDefinition* particle = particleTable->FindParticle(fpartname);
 	fParticleGun->SetParticleDefinition(particle);
 
-	//Launching position
-	x_up = x_rand + 150 * cm * sin(theta) * cos(phi);
-	y_up = y_rand + 150 * cm * sin(theta) * sin(phi);
-	z_up = z + 150 * cm * cos(theta); 
+	//Particle gun position
+	x0 = x + 1500 * sin(theta) * cos(phi);
+	yy0 = y + 1500 * sin(theta) * sin(phi);
+	z0 = z + 1500 * cos(theta);
 
-	fParticleGun->SetParticlePosition(G4ThreeVector(x_up, y_up, z_up));
+	fParticleGun->SetParticlePosition(G4ThreeVector(x0 * mm, yy0 * mm, z0 * mm));
 
-	//Momentum direction
+	//Particle momentum direction
 	ux = -sin(theta) * cos(phi);
 	uy = -sin(theta) * sin(phi);
 	uz = -cos(theta);
 
 	fParticleGun->SetParticleMomentumDirection(G4ThreeVector(ux, uy, uz));
 
-	fParticleGun->SetParticleEnergy(fEkin * GeV);
+	//Particle kinetic energy
+	E0 = fEkin;
+
+	fParticleGun->SetParticleEnergy(E0 * GeV);
 	fParticleGun->GeneratePrimaryVertex(anEvent);
 }
 
