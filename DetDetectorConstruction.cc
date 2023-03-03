@@ -212,59 +212,64 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 	G4RotationMatrix* OptRot = new G4RotationMatrix;
 	OptRot->rotateY(90. * deg);
 
-	G4double OptPos_Z = 0.5 * (StrHeight - HoleHeight) + OptRad;
-
 	//Variables for creating copies
-	G4int NRows = 96, NLvls = 2, NCoord = 3;
+	const G4int NRows = 96, NLvls = 2, NCoord = 3;
 	G4int row, level, coord;
-	G4int StrNCopy = 0, TdlrNCopy = 0, OptNCopy = 0;
-	G4double GapH = 0.1 * mm;
+	G4int StrNCopy = 0, TdlrNCopy = 0, OptCoreNCopy = 0, OptCovNCopy = 0;
+	G4double GapH = 0.2 * mm;
 
 	G4double XStr = 0 * mm;
 	G4double YStr = -(0.5 * NRows * TdlrWidth + (0.5 * NRows - 1) * GapH + 0.5 * GapH) + 0.5 * TdlrWidth;
 	G4double ZStr = 0.5 * TdlrHeight;
-	
-	G4double XOpt = XStr;
-	G4double YOpt = YStr;
-	G4double ZOpt = TdlrHeight - 0.5 * (TdlrHeight - StrHeight) - 0.5 * HoleHeight) + OptRad;
+
+	G4double XOpt = 0 * mm;
+	G4double YOpt = 0 * mm;
+	G4double ZOpt = 0.5 * (StrHeight - HoleHeight) + OptRad + 0.1 * mm;
 
 	G4double Str_X, Str_Y, Str_Z, Opt_X, Opt_Y, Opt_Z;
 
-	//Single strip
-	/* G4Box* solidTdlr = new G4Box("tdlr_s", 0.5 * TdlrLength, 0.5 * TdlrWidth, 0.5 * TdlrHeight);
-	G4LogicalVolume* logicTdlr = new G4LogicalVolume(solidTdlr, PVF, "tdlr_l");
-	G4VPhysicalVolume* physTdlr = new G4PVPlacement(0, G4ThreeVector(), logicTdlr, "TEDLAR", logicWorld, false, 0, checkOverlaps);
 
-	G4Box* solidStrip = new G4Box("strip_s", 0.5 * StrLength, 0.5 * StrWidth, 0.5 * StrHeight);
-	G4Box* solidHole = new G4Box("hole_s", 0.5 * HoleLength, 0.5 * HoleWidth, 0.5 * HoleHeight);
-
-	G4ThreeVector trans(0., 0., 0.5 * StrHeight);
-	G4SubtractionSolid* solidStr = new G4SubtractionSolid("solid_strip", solidStrip, solidHole, HoleRot, trans);
-
-	G4LogicalVolume* logicStrip = new G4LogicalVolume(solidStr, STR, "strip_l");
-	G4VPhysicalVolume* physStrip = new G4PVPlacement(0, G4ThreeVector(), logicStrip, "STRIP", logicTdlr, false, 0, checkOverlaps);
-
-	G4Tubs* solidCov = new G4Tubs("Cov_s", 0, OptRad, 0.5 * OptHeight, 0. * deg, 360. * deg);
-	G4LogicalVolume* logicCov = new G4LogicalVolume(solidCov, PMMA, "Cov_l");
-	G4VPhysicalVolume* physCov = new G4PVPlacement(OptRot, G4ThreeVector(0., 0., OptPos_Z), logicCov, "COVER", logicStrip, false, 0, checkOverlaps);
-
-	G4Tubs* solidCore = new G4Tubs("core_s", 0, OptRad - CovThickness, 0.5 * OptHeight, 0. * deg, 360. * deg);
-	G4LogicalVolume* logicCore = new G4LogicalVolume(solidCore, PS, "core_l");
-	G4VPhysicalVolume* physCore = new G4PVPlacement(0, G4ThreeVector(0., 0., 0.), logicCore, "CORE", logicCov, false, 0, checkOverlaps); */
-	
 	//Volumes
-	G4Box* solidTdlr = { NULL }, * solidStr = { NULL }, * solidHole = { NULL };
-	G4Tubs* solidCore = { NULL }, * solidCov = { NULL };
-	G4LogicalVolume* logicTdlr = { NULL }, * logicStrip = { NULL }, * logicCov = { NULL },
-		* logicCore = { NULL };
-	G4VPhysicalVolume*;
+	G4Box* solidStrip = { NULL }, * solidHole = { NULL }, * solidTdlr[NRows] = { NULL };
+	G4Tubs* solidCore[NRows] = { NULL }, * solidCov[NRows] = { NULL };
+	G4LogicalVolume* logicTdlr[NRows] = { NULL }, * logicStrip[NRows] = { NULL }, * logicCov[NRows] = { NULL },
+		* logicCore[NRows] = { NULL };
+	G4VPhysicalVolume* physTdlr[NRows] = { NULL }, * physStrip[NRows] = { NULL }, * physCov[NRows] = { NULL }, 
+		* physCore[NRows] = { NULL };
+	G4SubtractionSolid* solidStr = { NULL };
 
 	//Coordinate planes
+	solidStrip = new G4Box("strip_s", 0.5 * StrLength, 0.5 * StrWidth, 0.5 * StrHeight);
+	solidHole = new G4Box("hole_s", 0.5 * HoleLength, 0.5 * HoleWidth, 0.5 * HoleHeight);
+	G4ThreeVector trans(0., 0., 0.5 * StrHeight);
+	solidStr = new G4SubtractionSolid("solid_strip", solidStrip, solidHole, HoleRot, trans);
 
+	Str_X = XStr, Str_Y = YStr, Str_Z = ZStr, Opt_X = XOpt, Opt_Y = YOpt, Opt_Z = ZOpt;
+	G4double distance = TdlrWidth + GapH;
 
 	for (row = 0; row < NRows; row++)
 	{
+		solidTdlr[row] = new G4Box("tdlr_s", 0.5 * TdlrLength, 0.5 * TdlrWidth, 0.5 * TdlrHeight);
+		logicTdlr[row] = new G4LogicalVolume(solidTdlr[row], PVF, "tdlr_l");
+		physTdlr[row] = new G4PVPlacement(0, G4ThreeVector(Str_X, Str_Y, Str_Z), logicTdlr[row], "TEDLAR", logicWorld, false, TdlrNCopy, checkOverlaps);
 
+		logicStrip[row] = new G4LogicalVolume(solidStr, STR, "strip_l");
+		physStrip[row] = new G4PVPlacement(0, G4ThreeVector(0., 0., 0.), logicStrip[row], "STRIP", logicTdlr[row], false, StrNCopy, checkOverlaps);
+
+		solidCov[row] = new G4Tubs("Cov_s", 0, OptRad, 0.5 * OptHeight, 0. * deg, 360. * deg);
+		logicCov[row] = new G4LogicalVolume(solidCov[row], PMMA, "Cov_l");
+		physCov[row] = new G4PVPlacement(OptRot, G4ThreeVector(Opt_X, Opt_Y, Opt_Z), logicCov[row], "COVER", logicStrip[row], false, OptCovNCopy, checkOverlaps);
+
+		solidCore[row] = new G4Tubs("core_s", 0, OptRad - CovThickness, 0.5 * OptHeight, 0. * deg, 360. * deg);
+		logicCore[row] = new G4LogicalVolume(solidCore[row], PS, "core_l");
+		physCore[row] = new G4PVPlacement(0, G4ThreeVector(0., 0., 0.), logicCore[row], "CORE", logicCov[row], false, OptCoreNCopy, checkOverlaps);
+
+		Str_Y += distance;
+		
+		StrNCopy++;
+		TdlrNCopy++;
+		OptCoreNCopy++;
+		OptCovNCopy++;
 	}
 
 	//Making world invisible
