@@ -101,6 +101,13 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 	STR->AddMaterial(PFT, fractionmass = 1.5 * perCent);
 	STR->AddMaterial(PS, fractionmass = 0.04 * perCent);
 
+	//Optical glue
+	G4Material* Glue = new G4Material("MGlue", density = 1.02 * g / cm3, ncomponents = 4);
+	Glue->AddElement(H, nelements = 108);
+	Glue->AddElement(C, nelements = 65);
+	Glue->AddElement(N, nelements = 20);
+	Glue->AddElement(O, nelements = 7);
+
 
 	/*	OPTICAL PROPERTIES	*/
 
@@ -190,6 +197,12 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 	G4LogicalVolume* logicWorld = new G4LogicalVolume(solidWorld, Air, "World_l");
 	G4VPhysicalVolume* physWorld = new G4PVPlacement(0, G4ThreeVector(), logicWorld, "World", 0, false, 0, checkOverlaps);
 
+	G4double GapH = 0.1 * mm;   //Horizontal gap
+	G4double GapV = 0.1 * mm;	//Vertical gap
+	G4double GapFS = 0.1 * mm;	//Gap between frame and strip
+	G4double GapSh = 0.1 * mm;	//Gap between shells
+	G4double disloc = 5 * mm;	//Dislocation of upper layer of coordinate plate
+
 	//Strip parameters
 	G4double StrLength = 1000 * mm;
 	G4double StrWidth = 10 * mm;
@@ -199,11 +212,10 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 	G4double TdlrWidth = StrWidth + 0.2 * mm;
 	G4double TdlrHeight = StrHeight + 0.2 * mm;
 
-	//Hole in strip
-	G4double HoleLength = StrLength + 0.1 * mm;
-	G4double HoleWidth = 1.5 * mm;
-	G4double HoleHeight = 4 * mm;
-	G4RotationMatrix* HoleRot = new G4RotationMatrix;
+	//Optical glue in strip
+	G4double GlueLength = StrLength;
+	G4double GlueWidth = 1.5 * mm;
+	G4double GlueHeight = 2 * mm;
 
 	//Optical fiber
 	G4double OptRad = 0.485 * mm;
@@ -215,24 +227,36 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 	//Variables for creating copies
 	const G4int NRows = 96, NLvls = 2, NCoord = 3;
 	G4int row, level, coord;
-	G4int StrNCopy = 0, TdlrNCopy = 0, OptCoreNCopy = 0, OptCovNCopy = 0;
-	G4double GapH = 0.2 * mm;
+	G4int StrNCopy = 0, TdlrNCopy = 0, OptCoreNCopy = 0, OptCovNCopy = 0, GlueNCopy = 0, ShellNCopy = 0, HollowNCopy = 0;
 
 	G4double XStr = 0 * mm;
 	G4double YStr = -(0.5 * NRows * TdlrWidth + (0.5 * NRows - 1) * GapH + 0.5 * GapH) + 0.5 * TdlrWidth;
 	G4double ZStr = 0.5 * TdlrHeight;
 
+	G4double XGl = 0 * mm;
+	G4double YGl = 0 * mm;
+	G4double ZGl = 0.5 * (StrHeight - GlueHeight);
+
 	G4double XOpt = 0 * mm;
 	G4double YOpt = 0 * mm;
-	G4double ZOpt = 0.5 * (StrHeight - HoleHeight) + OptRad + 0.02 * mm;
+	G4double ZOpt = OptRad - 0.5 * GlueHeight;
 
-	G4double Str_X, Str_Y, Str_Z, Opt_X, Opt_Y, Opt_Z;
+	G4double Str_X, Str_Y, Str_Z, Gl_X, Gl_Y, Gl_Z, Opt_X, Opt_Y, Opt_Z;
 
+	//Steel shell and air hollow inside it
+	G4double HollowLength = TdlrHeight + 2 * GapH;
+	G4double HollowWidth = NRows * (TdlrWidth + GapH) + disloc;
+	G4double HollowHeight = 2 * TdlrHeight + GapV + 2 * GapFS;
+
+	G4double ShellThickness = 1 * mm;
+	G4double ShellLength = HollowLength + 2 * ShellThickness;
+	G4double ShellWidth = HollowWidth + 2 * ShellThickness;
+	G4double ShellHeight = HollowHeight + 2 * ShellThickness;
 
 	//Volumes
-	G4Box* solidStrip = { NULL }, * solidHole = { NULL }, * solidTdlr[NRows] = { NULL };
+	G4Box* solidRotVolume = { NULL }, * solidShell[NLvls] = { NULL }, * solidHollow[NLvls] = { NULL }, * solidTdlr[NRows] = { NULL }, * solidStrip[NRows] = { NULL }, * solidGlue[NRows] = { NULL };
 	G4Tubs* solidCore[NRows] = { NULL }, * solidCov[NRows] = { NULL };
-	G4LogicalVolume* logicTdlr[NRows] = { NULL }, * logicStrip[NRows] = { NULL }, * logicCov[NRows] = { NULL },
+	G4LogicalVolume* logicRotVolume = { NULL }, * solidShell[NLvls] = { NULL }, * solidHollow[NLvls] = { NULL }, * logicTdlr[NRows] = { NULL }, * logicStrip[NRows] = { NULL }, * logicCov[NRows] = { NULL },
 		* logicCore[NRows] = { NULL };
 	G4VPhysicalVolume* physTdlr[NRows] = { NULL }, * physStrip[NRows] = { NULL }, * physCov[NRows] = { NULL },
 		* physCore[NRows] = { NULL };
@@ -244,7 +268,7 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 	G4ThreeVector trans(0., 0., 0.5 * StrHeight);
 	solidStr = new G4SubtractionSolid("solid_strip", solidStrip, solidHole, HoleRot, trans);
 
-	Str_X = XStr, Str_Y = YStr, Str_Z = ZStr, Opt_X = XOpt, Opt_Y = YOpt, Opt_Z = ZOpt;
+	Str_X = XStr, Str_Y = YStr, Str_Z = ZStr, Gl_X = XGl, Gl_Y = YGl, Gl_Z = ZGl, Opt_X = XOpt, Opt_Y = YOpt, Opt_Z = ZOpt;
 	G4double distance = TdlrWidth + GapH;
 
 	for (row = 0; row < NRows; row++)
