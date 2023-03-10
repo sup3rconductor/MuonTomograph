@@ -90,6 +90,7 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 	G4Material* PFT = new G4Material("MPFT", density = 1.19 * g / cm3, ncomponents = 2);
 	PFT->AddElement(elC, nelements = 18);
 	PFT->AddElement(elH, nelements = 14);
+
 	G4Material* POPOP = new G4Material("MPOPOP", density = 1.5 * g / cm3, ncomponents = 4);
 	POPOP->AddElement(elC, nelements = 24);
 	POPOP->AddElement(elH, nelements = 16);
@@ -224,6 +225,16 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 	G4RotationMatrix* OptRot = new G4RotationMatrix;
 	OptRot->rotateY(90. * deg);
 
+	//Steel shell and air hollow inside it
+	G4double HollowLength = TdlrLength + 2 * GapH;
+	G4double HollowWidth = NRows * (TdlrWidth + GapH) + disloc;
+	G4double HollowHeight = 2 * TdlrHeight + GapV + 2 * GapFS;
+
+	G4double ShellThickness = 1 * mm;
+	G4double ShellLength = HollowLength + 2 * ShellThickness;
+	G4double ShellWidth = HollowWidth + 2 * ShellThickness;
+	G4double ShellHeight = HollowHeight + 2 * ShellThickness;
+
 	//Variables for creating copies
 	const G4int NRows = 96, NLvls = 2, NCoord = 3;
 	G4int row, level, coord;
@@ -243,30 +254,28 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 
 	G4double Str_X, Str_Y, Str_Z, Gl_X, Gl_Y, Gl_Z, Opt_X, Opt_Y, Opt_Z;
 
-	//Steel shell and air hollow inside it
-	G4double HollowLength = TdlrHeight + 2 * GapH;
-	G4double HollowWidth = NRows * (TdlrWidth + GapH) + disloc;
-	G4double HollowHeight = 2 * TdlrHeight + GapV + 2 * GapFS;
-
-	G4double ShellThickness = 1 * mm;
-	G4double ShellLength = HollowLength + 2 * ShellThickness;
-	G4double ShellWidth = HollowWidth + 2 * ShellThickness;
-	G4double ShellHeight = HollowHeight + 2 * ShellThickness;
 
 	//Volumes
-	G4Box* solidRotVolume = { NULL }, * solidShell[NLvls] = { NULL }, * solidHollow[NLvls] = { NULL }, * solidTdlr[NRows] = { NULL }, * solidStrip[NRows] = { NULL }, * solidGlue[NRows] = { NULL };
-	G4Tubs* solidCore[NRows] = { NULL }, * solidCov[NRows] = { NULL };
-	G4LogicalVolume* logicRotVolume = { NULL }, * solidShell[NLvls] = { NULL }, * solidHollow[NLvls] = { NULL }, * logicTdlr[NRows] = { NULL }, * logicStrip[NRows] = { NULL }, * logicCov[NRows] = { NULL },
-		* logicCore[NRows] = { NULL };
-	G4VPhysicalVolume* physTdlr[NRows] = { NULL }, * physStrip[NRows] = { NULL }, * physCov[NRows] = { NULL },
-		* physCore[NRows] = { NULL };
-	G4SubtractionSolid* solidStr = { NULL };
+	G4Box* solidRotVolume = { NULL }, * solidShell = { NULL }, * solidHollow = { NULL }, * solidTdlr[NRows][NLvls] = {NULL}, * solidStrip[NRows][NLvls] = {NULL}, * solidGlue[NRows][NLvls] = {NULL};
+	G4Tubs* solidCore[NRows][NLvls] = { NULL }, * solidCov[NRows][NLvls] = { NULL };
+	G4LogicalVolume* logicRotVolume = { NULL }, * logicShell = { NULL }, * logicHollow = { NULL }, * logicTdlr[NRows][NLvls] = { NULL }, * logicStrip[NRows][NLvls] = { NULL }, * logicGlue[NRows][NLvls] = { NULL },
+		* logicCov[NRows][NLvls] = { NULL }, * logicCore[NRows][NLvls] = { NULL };
+	G4VPhysicalVolume* physRotVolume = { NULL }, * physShell = { NULL }, * physHollow = { NULL }, * physTdlr[NRows][NLvls] = { NULL }, * physStrip[NRows][NLvls] = { NULL }, * physGlue[NRows][NLvls] = { NULL },
+		* physCov[NRows][NLvls] = { NULL }, * physCore[NRows][NLvls] = { NULL };
 
-	//Coordinate planes
-	solidStrip = new G4Box("strip_s", 0.5 * StrLength, 0.5 * StrWidth, 0.5 * StrHeight);
-	solidHole = new G4Box("hole_s", 0.5 * HoleLength, 0.5 * HoleWidth, 0.5 * HoleHeight);
-	G4ThreeVector trans(0., 0., 0.5 * StrHeight);
-	solidStr = new G4SubtractionSolid("solid_strip", solidStrip, solidHole, HoleRot, trans);
+	//Rotating volume
+	solidRotVolume = new G4Box("RotVol_s", 0.5 * m, 0.5 * m, 0.5 * m);
+	logicRotVolume = new G4LogicalVolume(solidRotVolume, Air, "RotVol_l");
+	physRotVolume = new G4PVPlacement(0, G4ThreeVector(), logicRotVolume, "ROTATION_VOLUME", logicWorld, false, 0, checkOverlaps);
+
+	//Steel shell and air hollow inside it
+	solidShell = new G4Box("shell_s", 0.5 * ShellLength, 0.5 * ShellWidth, 0.5 * ShellHeight);
+	logicShell = new G4LogicalVolume(solidShell, FeMaterial, "shell_l");
+	physShell = new G4PVPlacement(0, G4ThreeVector(0., 0., - 0.5 * m + 0.5 * ShellHeight), logicShell, "SHELL", logicRotVolume, false, 0, checkOverlaps);
+
+	solidHollow = new G4Box("hollow_s", 0.5 * HollowLength, 0.5 * HollowWidth, 0.5 * HollowHeight);
+	logicHollow = new G4LogicalVolume(solidRotVolume, Air, "hollow_l");
+	physHollow = new G4PVPlacement(0, G4ThreeVector(), logicHollow, "HOLLOW", logicShell, false, 0, checkOverlaps);
 
 	Str_X = XStr, Str_Y = YStr, Str_Z = ZStr, Gl_X = XGl, Gl_Y = YGl, Gl_Z = ZGl, Opt_X = XOpt, Opt_Y = YOpt, Opt_Z = ZOpt;
 	G4double distance = TdlrWidth + GapH;
