@@ -100,14 +100,14 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 	G4Material* STR = new G4Material("MSTR", density = 1.2 * g / cm3, ncomponents = 3);
 	STR->AddMaterial(PS, fractionmass = 98.46 * perCent);
 	STR->AddMaterial(PFT, fractionmass = 1.5 * perCent);
-	STR->AddMaterial(PS, fractionmass = 0.04 * perCent);
+	STR->AddMaterial(POPOP, fractionmass = 0.04 * perCent);
 
 	//Optical glue
 	G4Material* Glue = new G4Material("MGlue", density = 1.02 * g / cm3, ncomponents = 4);
-	Glue->AddElement(H, nelements = 108);
-	Glue->AddElement(C, nelements = 65);
-	Glue->AddElement(N, nelements = 20);
-	Glue->AddElement(O, nelements = 7);
+	Glue->AddElement(elH, nelements = 108);
+	Glue->AddElement(elC, nelements = 65);
+	Glue->AddElement(elN, nelements = 20);
+	Glue->AddElement(elO, nelements = 7);
 
 
 	/*	OPTICAL PROPERTIES	*/
@@ -204,6 +204,11 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 	G4double GapSh = 0.1 * mm;	//Gap between shells
 	G4double disloc = 5 * mm;	//Dislocation of upper layer of coordinate plate
 
+	//Variables for creating copies
+	const G4int NRows = 96, NLvls = 2, NCoord = 3;
+	G4int row, level, coord;
+	G4int StrNCopy = 0, TdlrNCopy = 0, OptCoreNCopy = 0, OptCovNCopy = 0, GlueNCopy = 0, ShellNCopy = 0, HollowNCopy = 0;
+
 	//Strip parameters
 	G4double StrLength = 1000 * mm;
 	G4double StrWidth = 10 * mm;
@@ -235,14 +240,9 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 	G4double ShellWidth = HollowWidth + 2 * ShellThickness;
 	G4double ShellHeight = HollowHeight + 2 * ShellThickness;
 
-	//Variables for creating copies
-	const G4int NRows = 96, NLvls = 2, NCoord = 3;
-	G4int row, level, coord;
-	G4int StrNCopy = 0, TdlrNCopy = 0, OptCoreNCopy = 0, OptCovNCopy = 0, GlueNCopy = 0, ShellNCopy = 0, HollowNCopy = 0;
-
 	G4double XStr = 0 * mm;
-	G4double YStr = -(0.5 * NRows * TdlrWidth + (0.5 * NRows - 1) * GapH + 0.5 * GapH) + 0.5 * TdlrWidth;
-	G4double ZStr = 0.5 * TdlrHeight;
+	G4double YStr = - 0.5 * HollowWidth + 0.5 * TdlrWidth + GapFS;
+	G4double ZStr = - 0.5 * HollowHeight + 0.5 * TdlrHeight + GapFS;
 
 	G4double XGl = 0 * mm;
 	G4double YGl = 0 * mm;
@@ -256,7 +256,7 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 
 
 	//Volumes
-	G4Box* solidRotVolume = { NULL }, * solidShell = { NULL }, * solidHollow = { NULL }, * solidTdlr[NRows][NLvls] = {NULL}, * solidStrip[NRows][NLvls] = {NULL}, * solidGlue[NRows][NLvls] = {NULL};
+	G4Box* solidRotVolume = { NULL }, * solidShell = { NULL }, * solidHollow = { NULL }, * solidTdlr[NRows][NLvls] = { NULL }, * solidStrip[NRows][NLvls] = { NULL }, * solidGlue[NRows][NLvls] = { NULL };
 	G4Tubs* solidCore[NRows][NLvls] = { NULL }, * solidCov[NRows][NLvls] = { NULL };
 	G4LogicalVolume* logicRotVolume = { NULL }, * logicShell = { NULL }, * logicHollow = { NULL }, * logicTdlr[NRows][NLvls] = { NULL }, * logicStrip[NRows][NLvls] = { NULL }, * logicGlue[NRows][NLvls] = { NULL },
 		* logicCov[NRows][NLvls] = { NULL }, * logicCore[NRows][NLvls] = { NULL };
@@ -264,45 +264,57 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 		* physCov[NRows][NLvls] = { NULL }, * physCore[NRows][NLvls] = { NULL };
 
 	//Rotating volume
-	solidRotVolume = new G4Box("RotVol_s", 0.5 * m, 0.5 * m, 0.5 * m);
+	solidRotVolume = new G4Box("RotVol_s", 0.6 * m, 0.6 * m, 0.5 * m);
 	logicRotVolume = new G4LogicalVolume(solidRotVolume, Air, "RotVol_l");
-	physRotVolume = new G4PVPlacement(0, G4ThreeVector(), logicRotVolume, "ROTATION_VOLUME", logicWorld, false, 0, checkOverlaps);
+	physRotVolume = new G4PVPlacement(0, G4ThreeVector(0., 0., 0.), logicRotVolume, "ROTATION_VOLUME", logicWorld, false, 0, checkOverlaps);
 
 	//Steel shell and air hollow inside it
 	solidShell = new G4Box("shell_s", 0.5 * ShellLength, 0.5 * ShellWidth, 0.5 * ShellHeight);
 	logicShell = new G4LogicalVolume(solidShell, FeMaterial, "shell_l");
-	physShell = new G4PVPlacement(0, G4ThreeVector(0., 0., - 0.5 * m + 0.5 * ShellHeight), logicShell, "SHELL", logicRotVolume, false, 0, checkOverlaps);
+	physShell = new G4PVPlacement(0, G4ThreeVector(0., 0., -0.5 * m + 0.5 * ShellHeight), logicShell, "SHELL", logicRotVolume, false, 0, checkOverlaps);
 
 	solidHollow = new G4Box("hollow_s", 0.5 * HollowLength, 0.5 * HollowWidth, 0.5 * HollowHeight);
-	logicHollow = new G4LogicalVolume(solidRotVolume, Air, "hollow_l");
-	physHollow = new G4PVPlacement(0, G4ThreeVector(), logicHollow, "HOLLOW", logicShell, false, 0, checkOverlaps);
+	logicHollow = new G4LogicalVolume(solidHollow, Air, "hollow_l");
+	physHollow = new G4PVPlacement(0, G4ThreeVector(0., 0., 0.), logicHollow, "HOLLOW", logicShell, false, 0, checkOverlaps);
 
 	Str_X = XStr, Str_Y = YStr, Str_Z = ZStr, Gl_X = XGl, Gl_Y = YGl, Gl_Z = ZGl, Opt_X = XOpt, Opt_Y = YOpt, Opt_Z = ZOpt;
 	G4double distance = TdlrWidth + GapH;
 
-	for (row = 0; row < NRows; row++)
+	for (level = 0; level < NLvls; level++)
 	{
-		solidTdlr[row] = new G4Box("tdlr_s", 0.5 * TdlrLength, 0.5 * TdlrWidth, 0.5 * TdlrHeight);
-		logicTdlr[row] = new G4LogicalVolume(solidTdlr[row], PVF, "tdlr_l");
-		physTdlr[row] = new G4PVPlacement(0, G4ThreeVector(Str_X, Str_Y, Str_Z), logicTdlr[row], "TEDLAR", logicWorld, false, TdlrNCopy, checkOverlaps);
+		for (row = 0; row < NRows; row++)
+		{
+			solidTdlr[row][level] = new G4Box("tdlr_s", 0.5 * TdlrLength, 0.5 * TdlrWidth, 0.5 * TdlrHeight);
+			logicTdlr[row][level] = new G4LogicalVolume(solidTdlr[row][level], PVF, "tdlr_l");
+			physTdlr[row][level] = new G4PVPlacement(0, G4ThreeVector(Str_X, Str_Y, Str_Z), logicTdlr[row][level], "TEDLAR", logicHollow, false, TdlrNCopy, checkOverlaps);
 
-		logicStrip[row] = new G4LogicalVolume(solidStr, STR, "strip_l");
-		physStrip[row] = new G4PVPlacement(0, G4ThreeVector(0., 0., 0.), logicStrip[row], "STRIP", logicTdlr[row], false, StrNCopy, checkOverlaps);
+			solidStrip[row][level] = new G4Box("strip_s", 0.5 * StrLength, 0.5 * StrWidth, 0.5 * StrHeight);
+			logicStrip[row][level] = new G4LogicalVolume(solidStrip[row][level], STR, "strip_l");
+			physStrip[row][level] = new G4PVPlacement(0, G4ThreeVector(0., 0., 0.), logicStrip[row][level], "STRIP", logicTdlr[row][level], false, StrNCopy, checkOverlaps);
 
-		solidCov[row] = new G4Tubs("Cov_s", 0, OptRad, 0.5 * OptHeight, 0. * deg, 360. * deg);
-		logicCov[row] = new G4LogicalVolume(solidCov[row], PMMA, "Cov_l");
-		physCov[row] = new G4PVPlacement(OptRot, G4ThreeVector(Opt_X, Opt_Y, Opt_Z), logicCov[row], "COVER", logicTdlr[row], false, OptCovNCopy, checkOverlaps);
+			solidGlue[row][level] = new G4Box("glue_s", 0.5 * GlueLength, 0.5 * GlueWidth, 0.5 * GlueHeight);
+			logicGlue[row][level] = new G4LogicalVolume(solidGlue[row][level], Glue, "glue_l");
+			physGlue[row][level] = new G4PVPlacement(0, G4ThreeVector(Gl_X, Gl_Y, Gl_Z), logicGlue[row][level], "GLUE", logicStrip[row][level], false, GlueNCopy, checkOverlaps);
 
-		solidCore[row] = new G4Tubs("core_s", 0, OptRad - CovThickness, 0.5 * OptHeight, 0. * deg, 360. * deg);
-		logicCore[row] = new G4LogicalVolume(solidCore[row], PS, "core_l");
-		physCore[row] = new G4PVPlacement(0, G4ThreeVector(0., 0., 0.), logicCore[row], "CORE", logicCov[row], false, OptCoreNCopy, checkOverlaps);
+			solidCov[row][level] = new G4Tubs("cov_s", 0, OptRad, 0.5 * OptHeight, 0. * deg, 360. * deg);
+			logicCov[row][level] = new G4LogicalVolume(solidCov[row][level], PMMA, "cov_l");
+			physCov[row][level] = new G4PVPlacement(OptRot, G4ThreeVector(Opt_X, Opt_Y, Opt_Z), logicCov[row][level], "COVER", logicGlue[row][level], false, OptCovNCopy, checkOverlaps);
 
-		Str_Y += distance;
+			solidCore[row][level] = new G4Tubs("core_s", 0, OptRad - CovThickness, 0.5 * OptHeight, 0. * deg, 360. * deg);
+			logicCore[row][level] = new G4LogicalVolume(solidCore[row][level], PS, "core_l");
+			physCore[row][level] = new G4PVPlacement(0, G4ThreeVector(0., 0., 0.), logicCore[row][level], "CORE", logicCov[row][level], false, OptCoreNCopy, checkOverlaps);
 
-		StrNCopy++;
-		TdlrNCopy++;
-		OptCoreNCopy++;
-		OptCovNCopy++;
+			Str_Y += distance;
+
+			StrNCopy++;
+			TdlrNCopy++;
+			GlueNCopy++;
+			OptCoreNCopy++;
+			OptCovNCopy++;
+		}
+
+		Str_Y = YStr + disloc;
+		Str_Z += (TdlrHeight + GapV);
 	}
 
 	//Making world invisible
