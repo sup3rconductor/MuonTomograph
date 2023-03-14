@@ -240,16 +240,16 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 	G4double ShellWidth = HollowWidth + 2 * ShellThickness;
 	G4double ShellHeight = HollowHeight + 2 * ShellThickness;
 
-	G4RotationMatrix* ShellRot = new G4RotationMatrix;
+	G4RotationMatrix* ShellRot[NPlates] = { NULL };
 
-	G4double RotVolLength = ShellLength;
-	G4double RotVolWidth = ShellLength;
+	G4double RotVolLength = 1.05 * m;
+	G4double RotVolWidth = 1.05 * m;
 	G4double RotVolHeight = 1 * m;
 
 	//Coordinates
 	G4double XStr = 0 * mm;
-	G4double YStr = - 0.5 * HollowWidth + 0.5 * TdlrWidth + GapFS;
-	G4double ZStr = - 0.5 * HollowHeight + 0.5 * TdlrHeight + GapFS;
+	G4double YStr = -0.5 * HollowWidth + 0.5 * TdlrWidth + GapFS;
+	G4double ZStr = -0.5 * HollowHeight + 0.5 * TdlrHeight + GapFS;
 
 	G4double XGl = 0 * mm;
 	G4double YGl = 0 * mm;
@@ -264,14 +264,14 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 	G4double ZSh = -0.5 * (RotVolHeight - ShellHeight);
 
 	G4double Sh_X, Sh_Y, Sh_Z,
-		Str_X, Str_Y, Str_Z, 
-		Gl_X, Gl_Y, Gl_Z, 
+		Str_X, Str_Y, Str_Z,
+		Gl_X, Gl_Y, Gl_Z,
 		Opt_X, Opt_Y, Opt_Z;
 
 
 	//Volumes
-	G4Box* solidRotVolume = { NULL }, * solidShell[NPlates] = {NULL}, * solidHollow[NPlates] = {NULL}, * solidTdlr[NRows][NLvls][NPlates] = {NULL}, * solidStrip[NRows][NLvls][NPlates] = {NULL}, 
-		* solidGlue[NRows][NLvls][NPlates] = {NULL};
+	G4Box* solidRotVolume = { NULL }, * solidShell[NPlates] = { NULL }, * solidHollow[NPlates] = { NULL }, * solidTdlr[NRows][NLvls][NPlates] = { NULL }, * solidStrip[NRows][NLvls][NPlates] = { NULL },
+		* solidGlue[NRows][NLvls][NPlates] = { NULL };
 	G4Tubs* solidCore[NRows][NLvls][NPlates] = { NULL }, * solidCov[NRows][NLvls][NPlates] = { NULL };
 	G4LogicalVolume* logicRotVolume = { NULL }, * logicShell[NPlates] = { NULL }, * logicHollow[NPlates] = { NULL }, * logicTdlr[NRows][NLvls][NPlates] = { NULL }, * logicStrip[NRows][NLvls][NPlates] = { NULL },
 		* logicGlue[NRows][NLvls][NPlates] = { NULL }, * logicCov[NRows][NLvls][NPlates] = { NULL }, * logicCore[NRows][NLvls][NPlates] = { NULL };
@@ -284,24 +284,26 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 	physRotVolume = new G4PVPlacement(0, G4ThreeVector(0., 0., 0.), logicRotVolume, "ROTATION_VOLUME", logicWorld, false, 0, checkOverlaps);
 
 	Sh_X = XSh, Sh_Y = YSh, Sh_Z = ZSh,
-	Str_X = XStr, Str_Y = YStr, Str_Z = ZStr, Gl_X = XGl, Gl_Y = YGl, Gl_Z = ZGl, Opt_X = XOpt, Opt_Y = YOpt, Opt_Z = ZOpt;
+		Str_X = XStr, Str_Y = YStr, Str_Z = ZStr, Gl_X = XGl, Gl_Y = YGl, Gl_Z = ZGl, Opt_X = XOpt, Opt_Y = YOpt, Opt_Z = ZOpt;
 	G4double distance = TdlrWidth + GapH;
 
 	for (plate = 0; plate < NPlates; plate++)
 	{
 		if (plate == 1)
 		{
-			ShellRot->rotateZ(90. * deg);
+			ShellRot[plate] = new G4RotationMatrix;
+			ShellRot[plate]->rotateZ(90. * deg);
 		}
 
 		else
 		{
-			ShellRot->rotateZ(0. * deg);
+			ShellRot[plate] = new G4RotationMatrix;
+			ShellRot[plate]->rotateZ(0. * deg);
 		}
 
 		solidShell[plate] = new G4Box("shell_s", 0.5 * ShellLength, 0.5 * ShellWidth, 0.5 * ShellHeight);
 		logicShell[plate] = new G4LogicalVolume(solidShell[plate], FeMaterial, "shell_l");
-		physShell[plate] = new G4PVPlacement(ShellRot, G4ThreeVector(Sh_X, Sh_Y, Sh_Z), logicShell[plate], "SHELL", logicRotVolume, false, ShellNCopy, checkOverlaps);
+		physShell[plate] = new G4PVPlacement(ShellRot[plate], G4ThreeVector(Sh_X, Sh_Y, Sh_Z), logicShell[plate], "SHELL", logicRotVolume, false, ShellNCopy, checkOverlaps);
 
 		solidHollow[plate] = new G4Box("hollow_s", 0.5 * HollowLength, 0.5 * HollowWidth, 0.5 * HollowHeight);
 		logicHollow[plate] = new G4LogicalVolume(solidHollow[plate], Air, "hollow_l");
@@ -342,7 +344,7 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 				OptCoreNCopy++;
 				OptCovNCopy++;
 			}
-			
+
 			//Next layer of strips + its dislocation related to lower layer
 			Str_Y = YStr + disloc;
 			Str_Z += (TdlrHeight + GapV);
@@ -356,7 +358,7 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 		Str_Y = YStr;
 		Str_Z = ZStr;
 	}
-	
+
 
 	//Making world invisible
 	auto UniverseVisAtt = new G4VisAttributes(G4Colour(1.0, 1.0, 1.0));
