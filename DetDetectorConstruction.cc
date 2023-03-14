@@ -202,7 +202,7 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 	G4double GapV = 0.2 * mm;	//Vertical gap
 	G4double GapFS = 0.2 * mm;	//Gap between frame and strip
 	G4double GapSh = 5 * mm;	//Gap between shells
-	G4double disloc = 3.6 * mm;	//Dislocation of upper layer of coordinate plate
+	G4double disloc = 5.1 * mm;	//Dislocation of upper layer of coordinate plate
 
 	//Variables for creating copies
 	const G4int NRows = 96, NLvls = 2, NPlates = 2, NCoord = 3;
@@ -232,7 +232,7 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 
 	//Rotating volume, steel shell and air hollow inside it
 	G4double HollowLength = TdlrLength + 2 * GapFS;
-	G4double HollowWidth = NRows * TdlrWidth + (NRows - 1) * GapH + GapFS + disloc;
+	G4double HollowWidth = NRows * TdlrWidth + (NRows - 1) * GapH + 2 * GapFS + disloc;
 	G4double HollowHeight = 2 * TdlrHeight + GapV + 2 * GapFS;
 
 	G4double ShellThickness = 1 * mm;
