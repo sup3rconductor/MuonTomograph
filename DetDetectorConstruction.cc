@@ -97,7 +97,7 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 	POPOP->AddElement(elN, nelements = 2);
 	POPOP->AddElement(elO, nelements = 2);
 
-	G4Material* STR = new G4Material("MSTR", density = 1.2 * g / cm3, ncomponents = 3);
+	G4Material* STR = new G4Material("MSTR", density = 1.06 * g / cm3, ncomponents = 3);
 	STR->AddMaterial(PS, fractionmass = 98.46 * perCent);
 	STR->AddMaterial(PFT, fractionmass = 1.5 * perCent);
 	STR->AddMaterial(POPOP, fractionmass = 0.04 * perCent);
@@ -156,6 +156,16 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 	G4double RindexOptCore[10] = { 1.59, 1.59, 1.59, 1.59, 1.59, 1.59, 1.59, 1.59, 1.59, 1.59 };
 	G4double RindexOptCov[10] = { 1.49, 1.49, 1.49, 1.49, 1.49, 1.49, 1.49, 1.49, 1.49, 1.49 };
 
+	//Glue optical properties
+	G4double PhotonEnergyGlue[2] = { 2.175 * eV, 3.542 * eV };
+	G4double RindexGlue[2] = { 1.56, 1.56 };
+	G4double AbsLengthGlue[2] = { 5 * m, 5 * m };
+
+	G4MaterialPropertiesTable* OptGlue = new G4MaterialPropertiesTable();
+	OptGlue->AddProperty("RINDEX", PhotonEnergyGlue, RindexGlue, 2);
+	OptGlue->AddProperty("WLSABSLENGTH", PhotonEnergyGlue, AbsLengthGlue, 2);
+	Glue->SetMaterialPropertiesTable(OptGlue);
+
 	//Core optical properties
 	G4MaterialPropertiesTable* OptCore = new G4MaterialPropertiesTable();
 	OptCore->AddProperty("RINDEX", EnergyOpt, RindexOptCore, 10);
@@ -202,7 +212,6 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 	G4double GapV = 0.2 * mm;	//Vertical gap
 	G4double GapFS = 0.2 * mm;	//Gap between frame and strip
 	G4double GapSh = 5 * mm;	//Gap between shells
-	G4double disloc = 5.1 * mm;	//Dislocation of upper layer of coordinate plate
 
 	//Variables for creating copies
 	const G4int NRows = 96, NLvls = 2, NPlates = 2, NCoord = 3;
@@ -217,6 +226,8 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 	G4double TdlrLength = StrLength;
 	G4double TdlrWidth = StrWidth + 0.2 * mm;
 	G4double TdlrHeight = StrHeight + 0.2 * mm;
+
+	G4double disloc = 0.5 * (TdlrWidth + GapH);	//Dislocation of upper layer of coordinate plate
 
 	//Optical glue in strip
 	G4double GlueLength = StrLength;
@@ -270,18 +281,18 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 
 
 	//Volumes
-	G4Box* solidRotVolume = { NULL }, * solidShell[NPlates][NCoord] = { NULL }, * solidHollow[NPlates][NCoord] = { NULL }, * solidTdlr[NRows][NLvls][NPlates][NCoord] = { NULL }, 
-	* solidStrip[NRows][NLvls][NPlates][NCoord] = { NULL }, * solidGlue[NRows][NLvls][NPlates][NCoord] = { NULL };
+	G4Box* solidRotVolume = { NULL }, * solidShell[NPlates][NCoord] = { NULL }, * solidHollow[NPlates][NCoord] = { NULL }, * solidTdlr[NRows][NLvls][NPlates][NCoord] = { NULL },
+		* solidStrip[NRows][NLvls][NPlates][NCoord] = { NULL }, * solidGlue[NRows][NLvls][NPlates][NCoord] = { NULL };
 
 	G4Tubs* solidCore[NRows][NLvls][NPlates][NCoord] = { NULL }, * solidCov[NRows][NLvls][NPlates][NCoord] = { NULL };
 
-	G4LogicalVolume* logicRotVolume = { NULL }, * logicShell[NPlates][NCoord] = { NULL }, * logicHollow[NPlates][NCoord] = { NULL }, * logicTdlr[NRows][NLvls][NPlates][NCoord] = { NULL }, 
-	* logicStrip[NRows][NLvls][NPlates][NCoord] = { NULL }, * logicGlue[NRows][NLvls][NPlates][NCoord] = { NULL }, * logicCov[NRows][NLvls][NPlates][NCoord] = { NULL }, 
-	* logicCore[NRows][NLvls][NPlates][NCoord] = { NULL };
+	G4LogicalVolume* logicRotVolume = { NULL }, * logicShell[NPlates][NCoord] = { NULL }, * logicHollow[NPlates][NCoord] = { NULL }, * logicTdlr[NRows][NLvls][NPlates][NCoord] = { NULL },
+		* logicStrip[NRows][NLvls][NPlates][NCoord] = { NULL }, * logicGlue[NRows][NLvls][NPlates][NCoord] = { NULL }, * logicCov[NRows][NLvls][NPlates][NCoord] = { NULL },
+		* logicCore[NRows][NLvls][NPlates][NCoord] = { NULL };
 
 	G4VPhysicalVolume* physRotVolume = { NULL }, * physShell[NPlates][NCoord] = { NULL }, * physHollow[NPlates][NCoord] = { NULL }, * physTdlr[NRows][NLvls][NPlates][NCoord] = { NULL },
-	* physStrip[NRows][NLvls][NPlates][NCoord] = { NULL }, * physGlue[NRows][NLvls][NPlates][NCoord] = { NULL }, * physCov[NRows][NLvls][NPlates][NCoord] = { NULL },
-	* physCore[NRows][NLvls][NPlates][NCoord] = { NULL };
+		* physStrip[NRows][NLvls][NPlates][NCoord] = { NULL }, * physGlue[NRows][NLvls][NPlates][NCoord] = { NULL }, * physCov[NRows][NLvls][NPlates][NCoord] = { NULL },
+		* physCore[NRows][NLvls][NPlates][NCoord] = { NULL };
 
 	//Rotating volume
 	solidRotVolume = new G4Box("RotVol_s", 0.5 * RotVolLength, 0.5 * RotVolWidth, 0.5 * RotVolHeight);
@@ -290,7 +301,7 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 
 	Sh_X = XSh, Sh_Y = YSh, Sh_Z = ZSh,
 		Str_X = XStr, Str_Y = YStr, Str_Z = ZStr, Gl_X = XGl, Gl_Y = YGl, Gl_Z = ZGl, Opt_X = XOpt, Opt_Y = YOpt, Opt_Z = ZOpt;
-	G4double distance = TdlrWidth + GapH;										
+	G4double distance = TdlrWidth + GapH;
 	G4double interval = 0.5 * RotVolHeight - 2.5 * GapSh - 3 * ShellHeight;
 
 	//Tomograph has 3 coordinate planes
@@ -300,7 +311,6 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 		{
 			Sh_Z = -0.5 * (ShellHeight + GapSh);
 		}
-
 		if (coord == 2)
 		{
 			Sh_Z = - ZSh - (ShellHeight + GapSh);
@@ -384,8 +394,37 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 		//Moving to next coordinate plane
 		Sh_Z += interval;
 	}
-	
 
+
+	//Border Strip - Tedlar: diffuse reflection
+	G4double reflectivity_tdlr[2] = { 0.95, 0.95 };
+	G4double PhotonEnergyTedlar[2] = { 1.9 * eV, 4.0 * eV };
+
+	G4OpticalSurface* OptPovTdlr = new G4OpticalSurface("PovTedlar");
+	OptPovTdlr->SetType(dielectric_dielectric);
+	OptPovTdlr->SetFinish(groundfrontpainted);
+	OptPovTdlr->SetModel(unified);
+
+	G4MaterialPropertiesTable* PovTdlrPT = new G4MaterialPropertiesTable();
+	PovTdlrPT->AddProperty("REFLECTIVITY", PhotonEnergyTedlar, reflectivity_tdlr, 2);
+	OptPovTdlr->SetMaterialPropertiesTable(PovTdlrPT);
+
+	G4int tdlr, lvl, plt, cord;
+
+	G4LogicalBorderSurface* TedlarSurface[NRows][NLvls][NPlates][NCoord] = { NULL };
+	for (cord = 0; cord < NCoord; cord++)
+	{
+		for (plt = 0; plt < NPlates; plt++)
+		{
+			for (lvl = 0; lvl < NLvls; lvl++)
+			{
+				for (tdlr = 0; tdlr < NRows; tdlr++)
+				{
+					TedlarSurface[tdlr][lvl][plt][cord] = new G4LogicalBorderSurface("TedlarStripSurface", physStrip[tdlr][lvl][plt][cord], physTdlr[tdlr][lvl][plt][cord], OptPovTdlr);
+				}
+			}
+		}
+	}
 
 	//Making world invisible
 	auto UniverseVisAtt = new G4VisAttributes(G4Colour(1.0, 1.0, 1.0));
