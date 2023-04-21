@@ -56,7 +56,6 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 	G4Element* elFe = new G4Element("Ferrum", "Fe", z = 26., a = 55.85 * g / mole);
 	G4Element* elF = new G4Element("Fluor", "F", z = 17., a = 18.99 * g / mole);
 
-
 	//Air
 	G4Material* Air = new G4Material("MAir", density = 1.290 * mg / cm3, ncomponents = 2);
 	Air->AddElement(elN, fractionmass = 0.8);
@@ -64,6 +63,9 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 
 	//Aluminium
 	G4Material* AlMaterial = new G4Material("MAluminium", z = 13., a = 26.98 * g / mole, density = 2.8 * g / cm3);
+
+	//Silicium
+	G4Material* SiMaterial = new G4Material("MSilicium", z = 14., a = 26.09 * g / mole, density = 2.33 * g / cm3);
 
 	//Ferrum
 	G4Material* FeMaterial = new G4Material("MFerrum", z = 26., a = 55.85 * g / mole, density = 7.9 * g / cm3);
@@ -101,6 +103,11 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 	STR->AddMaterial(PS, fractionmass = 98.46 * perCent);
 	STR->AddMaterial(PFT, fractionmass = 1.5 * perCent);
 	STR->AddMaterial(POPOP, fractionmass = 0.04 * perCent);
+
+	//Expanded polystyrene for strip cover
+	G4Material* PScov = new G4Material("McovStrip", density = 1.04 * g / cm3, nelements = 2);
+	PScov->AddElement(elC, nelements = 8);
+	PScov->AddElement(elH, nelements = 8);
 
 	//Optical glue
 	G4Material* Glue = new G4Material("MGlue", density = 1.02 * g / cm3, ncomponents = 4);
@@ -216,12 +223,16 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 	//Variables for creating copies
 	const G4int NRows = 96, NLvls = 2, NPlates = 2, NCoord = 3;
 	G4int row, level, plate, coord;
-	G4int StrNCopy = 0, TdlrNCopy = 0, OptCoreNCopy = 0, OptCovNCopy = 0, GlueNCopy = 0, ShellNCopy = 0, HollowNCopy = 0;
+	G4int StrNCopy = 0, TdlrNCopy = 0, ExPSNCopy = 0, SiPMNCopy = 0, OptCoreNCopy = 0, OptCovNCopy = 0, GlueNCopy = 0, ShellNCopy = 0, HollowNCopy = 0;
 
 	//Strip parameters
 	G4double StrLength = 1000 * mm;
 	G4double StrWidth = 10 * mm;
 	G4double StrHeight = 7 * mm;
+
+	G4double ExPSLength = StrLength;
+	G4double ExPSWidth = StrWidth + 0.02 * mm;
+	G4double ExPSHeight = StrHeight + 0.02 * mm;
 
 	G4double TdlrLength = StrLength;
 	G4double TdlrWidth = StrWidth + 0.2 * mm;
@@ -241,6 +252,13 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 	G4RotationMatrix* OptRot = new G4RotationMatrix;
 	OptRot->rotateY(90. * deg);
 
+	//SiPM
+	G4double TdlrThick = 0.1 * mm;				//Variable for placing SiPMs
+
+	G4double SiPMLength = 0.1 * mm;
+	G4double SiPMWidth = 1.3 * mm;
+	G4double SiPMHeight = 1.3 * mm;
+
 	//Rotating volume, steel shell and air hollow inside it
 	G4double HollowLength = TdlrLength + 2 * GapFS;
 	G4double HollowWidth = NRows * TdlrWidth + (NRows - 1) * GapH + 2 * GapFS + disloc;
@@ -253,7 +271,7 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 
 	G4RotationMatrix* ShellRot[NPlates][NCoord] = { NULL };
 
-	G4double RotVolLength = 1.05 * m;
+	G4double RotVolLength = 1.05 * m;       
 	G4double RotVolWidth = 1.05 * m;
 	G4double RotVolHeight = 1 * m;
 
@@ -270,6 +288,10 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 	G4double YOpt = 0 * mm;
 	G4double ZOpt = OptRad - 0.5 * GlueHeight;
 
+	G4double XSiPM = 0.5 * (StrLength + SiPMLength);
+	G4double YSiPM = YStr;
+	G4double ZSiPM = -0.5 * HollowHeight + GapFS + TdlrHeight - TdlrThick - GlueHeight + OptRad;
+
 	G4double XSh = 0 * mm;
 	G4double YSh = 0 * mm;
 	G4double ZSh = -0.5 * (RotVolHeight - ShellHeight);
@@ -277,22 +299,23 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 	G4double Sh_X, Sh_Y, Sh_Z,
 		Str_X, Str_Y, Str_Z,
 		Gl_X, Gl_Y, Gl_Z,
-		Opt_X, Opt_Y, Opt_Z;
+		Opt_X, Opt_Y, Opt_Z,
+		SiPM_X, SiPM_Y, SiPM_Z;
 
 
 	//Volumes
 	G4Box* solidRotVolume = { NULL }, * solidShell[NPlates][NCoord] = { NULL }, * solidHollow[NPlates][NCoord] = { NULL }, * solidTdlr[NRows][NLvls][NPlates][NCoord] = { NULL },
-		* solidStrip[NRows][NLvls][NPlates][NCoord] = { NULL }, * solidGlue[NRows][NLvls][NPlates][NCoord] = { NULL };
+		* solidExPS[NRows][NLvls][NPlates][NCoord], * solidStrip[NRows][NLvls][NPlates][NCoord] = { NULL }, * solidGlue[NRows][NLvls][NPlates][NCoord] = { NULL }, * solidSiPM[NRows][NLvls][NPlates][NCoord];
 
 	G4Tubs* solidCore[NRows][NLvls][NPlates][NCoord] = { NULL }, * solidCov[NRows][NLvls][NPlates][NCoord] = { NULL };
 
 	G4LogicalVolume* logicRotVolume = { NULL }, * logicShell[NPlates][NCoord] = { NULL }, * logicHollow[NPlates][NCoord] = { NULL }, * logicTdlr[NRows][NLvls][NPlates][NCoord] = { NULL },
-		* logicStrip[NRows][NLvls][NPlates][NCoord] = { NULL }, * logicGlue[NRows][NLvls][NPlates][NCoord] = { NULL }, * logicCov[NRows][NLvls][NPlates][NCoord] = { NULL },
-		* logicCore[NRows][NLvls][NPlates][NCoord] = { NULL };
+		* logicExPS[NRows][NLvls][NPlates][NCoord], * logicStrip[NRows][NLvls][NPlates][NCoord] = { NULL }, * logicGlue[NRows][NLvls][NPlates][NCoord] = { NULL }, * logicCov[NRows][NLvls][NPlates][NCoord] = { NULL },
+		* logicCore[NRows][NLvls][NPlates][NCoord] = { NULL }, * logicSiPM[NRows][NLvls][NPlates][NCoord];
 
 	G4VPhysicalVolume* physRotVolume = { NULL }, * physShell[NPlates][NCoord] = { NULL }, * physHollow[NPlates][NCoord] = { NULL }, * physTdlr[NRows][NLvls][NPlates][NCoord] = { NULL },
-		* physStrip[NRows][NLvls][NPlates][NCoord] = { NULL }, * physGlue[NRows][NLvls][NPlates][NCoord] = { NULL }, * physCov[NRows][NLvls][NPlates][NCoord] = { NULL },
-		* physCore[NRows][NLvls][NPlates][NCoord] = { NULL };
+		* physExPS[NRows][NLvls][NPlates][NCoord], * physStrip[NRows][NLvls][NPlates][NCoord] = { NULL }, * physGlue[NRows][NLvls][NPlates][NCoord] = { NULL }, * physCov[NRows][NLvls][NPlates][NCoord] = { NULL },
+		* physCore[NRows][NLvls][NPlates][NCoord] = { NULL }, * physSiPM[NRows][NLvls][NPlates][NCoord];
 
 	//Rotating volume
 	solidRotVolume = new G4Box("RotVol_s", 0.5 * RotVolLength, 0.5 * RotVolWidth, 0.5 * RotVolHeight);
@@ -300,23 +323,13 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 	physRotVolume = new G4PVPlacement(0, G4ThreeVector(0., 0., 0.), logicRotVolume, "ROTATION_VOLUME", logicWorld, false, 0, checkOverlaps);
 
 	Sh_X = XSh, Sh_Y = YSh, Sh_Z = ZSh,
-		Str_X = XStr, Str_Y = YStr, Str_Z = ZStr, Gl_X = XGl, Gl_Y = YGl, Gl_Z = ZGl, Opt_X = XOpt, Opt_Y = YOpt, Opt_Z = ZOpt;
+		Str_X = XStr, Str_Y = YStr, Str_Z = ZStr, Gl_X = XGl, Gl_Y = YGl, Gl_Z = ZGl, Opt_X = XOpt, Opt_Y = YOpt, Opt_Z = ZOpt, SiPM_X = XSiPM, SiPM_Y = YSiPM, SiPM_Z = ZSiPM;
 	G4double distance = TdlrWidth + GapH;
 	G4double interval = 0.5 * RotVolHeight - 2.5 * GapSh - 3 * ShellHeight;
 
 	//Tomograph has 3 coordinate planes
 	for (coord = 0; coord < NCoord; coord++)
 	{
-		/*if (coord == 1)
-		{
-			Sh_Z = -0.5 * (ShellHeight + GapSh);
-		}
-		if (coord == 2)
-		{
-			Sh_Z = - ZSh - (ShellHeight + GapSh);
-		}*/
-
-		//Each plane contains 2 steel shells with strips inside
 		for (plate = 0; plate < NPlates; plate++)
 		{
 			if (plate == 1)
@@ -352,9 +365,13 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 					logicTdlr[row][level][plate][coord] = new G4LogicalVolume(solidTdlr[row][level][plate][coord], PVF, "tdlr_l");
 					physTdlr[row][level][plate][coord] = new G4PVPlacement(0, G4ThreeVector(Str_X, Str_Y, Str_Z), logicTdlr[row][level][plate][coord], "TEDLAR", logicHollow[plate][coord], false, TdlrNCopy, checkOverlaps);
 
+					solidExPS[row][level][plate][coord] = new G4Box("exPS_s", 0.5 * ExPSLength, 0.5 * ExPSWidth, 0.5 * ExPSHeight);
+					logicExPS[row][level][plate][coord] = new G4LogicalVolume(solidExPS[row][level][plate][coord], PScov, "exPS_l");
+					physExPS[row][level][plate][coord] = new G4PVPlacement(0, G4ThreeVector(0., 0., 0.), logicExPS[row][level][plate][coord], "EXPS", logicTdlr[row][level][plate][coord], false, ExPSNCopy, checkOverlaps);
+
 					solidStrip[row][level][plate][coord] = new G4Box("strip_s", 0.5 * StrLength, 0.5 * StrWidth, 0.5 * StrHeight);
 					logicStrip[row][level][plate][coord] = new G4LogicalVolume(solidStrip[row][level][plate][coord], STR, "strip_l");
-					physStrip[row][level][plate][coord] = new G4PVPlacement(0, G4ThreeVector(0., 0., 0.), logicStrip[row][level][plate][coord], "STRIP", logicTdlr[row][level][plate][coord], false, StrNCopy, checkOverlaps);
+					physStrip[row][level][plate][coord] = new G4PVPlacement(0, G4ThreeVector(0., 0., 0.), logicStrip[row][level][plate][coord], "STRIP", logicExPS[row][level][plate][coord], false, StrNCopy, checkOverlaps);
 
 					solidGlue[row][level][plate][coord] = new G4Box("glue_s", 0.5 * GlueLength, 0.5 * GlueWidth, 0.5 * GlueHeight);
 					logicGlue[row][level][plate][coord] = new G4LogicalVolume(solidGlue[row][level][plate][coord], Glue, "glue_l");
@@ -368,11 +385,18 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 					logicCore[row][level][plate][coord] = new G4LogicalVolume(solidCore[row][level][plate][coord], PS, "core_l");
 					physCore[row][level][plate][coord] = new G4PVPlacement(0, G4ThreeVector(0., 0., 0.), logicCore[row][level][plate][coord], "CORE", logicCov[row][level][plate][coord], false, OptCoreNCopy, checkOverlaps);
 
+					solidSiPM[row][level][plate][coord] = new G4Box("sipm_s", 0.5 * SiPMLength, 0.5 * SiPMWidth, 0.5 * SiPMHeight);
+					logicSiPM[row][level][plate][coord] = new G4LogicalVolume(solidSiPM[row][level][plate][coord], SiMaterial, "sipm_l");
+					physSiPM[row][level][plate][coord] = new G4PVPlacement(0, G4ThreeVector(SiPM_X, SiPM_Y, SiPM_Z), logicSiPM[row][level][plate][coord], "SIPM", logicHollow[plate][coord], false, SiPMNCopy, checkOverlaps);
+
 					Str_Y += distance;
+					SiPM_Y += distance;
 
 					StrNCopy++;
 					TdlrNCopy++;
+					ExPSNCopy++;
 					GlueNCopy++;
+					SiPMNCopy++;
 					OptCoreNCopy++;
 					OptCovNCopy++;
 				}
@@ -380,15 +404,20 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 				//Next layer of strips + its dislocation related to lower layer
 				Str_Y = YStr + disloc;
 				Str_Z += (TdlrHeight + GapV);
+				SiPM_Y = YSiPM + disloc;
+				SiPM_Z += (TdlrHeight + GapV);
 			}
 
 			//Next shell
 			Sh_Z += (ShellHeight + GapSh);
 
-			//Returning to start position of strip
+			//Returning to start position of strip and SiPM
 			Str_X = XStr;
 			Str_Y = YStr;
 			Str_Z = ZStr;
+			SiPM_X = XSiPM;
+			SiPM_Y = YSiPM;
+			SiPM_Z = ZSiPM;
 		}
 
 		//Moving to next coordinate plane
@@ -396,8 +425,38 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 	}
 
 
-	//Border Strip - Tedlar: diffuse reflection
-	G4double reflectivity_tdlr[2] = { 0.95, 0.95 };
+	//Border Strip - expanded polystyrene: diffuse reflection
+	G4double reflectivity_exps[2] = { 0.95, 0.95 };
+	G4double PhotonEnergyExPS[2] = { 1.9 * eV, 4.0 * eV };
+
+	G4OpticalSurface* OptPovExPS = new G4OpticalSurface("PovExpPolystyrene");
+	OptPovExPS->SetType(dielectric_dielectric);
+	OptPovExPS->SetFinish(groundfrontpainted);
+	OptPovExPS->SetModel(unified);
+
+	G4MaterialPropertiesTable* PovExPSPT = new G4MaterialPropertiesTable();
+	PovExPSPT->AddProperty("REFLECTIVITY", PhotonEnergyExPS, reflectivity_exps, 2);
+	OptPovExPS->SetMaterialPropertiesTable(PovExPSPT);
+
+	G4int exps, lvl, plt, cord;
+
+	G4LogicalBorderSurface* ExpPolystyreneSurface[NRows][NLvls][NPlates][NCoord] = { NULL };
+	for (cord = 0; cord < NCoord; cord++)
+	{
+		for (plt = 0; plt < NPlates; plt++)
+		{
+			for (lvl = 0; lvl < NLvls; lvl++)
+			{
+				for (exps = 0; exps < NRows; exps++)
+				{
+					ExpPolystyreneSurface[exps][lvl][plt][cord] = new G4LogicalBorderSurface("ExPSStripSurface", physStrip[exps][lvl][plt][cord], physExPS[exps][lvl][plt][cord], OptPovExPS);
+				}
+			}
+		}
+	}
+
+	//Border expanded polystyrene - Tedlar: absorbtion
+	G4double reflectivity_tdlr[2] = { 0., 0.};
 	G4double PhotonEnergyTedlar[2] = { 1.9 * eV, 4.0 * eV };
 
 	G4OpticalSurface* OptPovTdlr = new G4OpticalSurface("PovTedlar");
@@ -409,7 +468,7 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 	PovTdlrPT->AddProperty("REFLECTIVITY", PhotonEnergyTedlar, reflectivity_tdlr, 2);
 	OptPovTdlr->SetMaterialPropertiesTable(PovTdlrPT);
 
-	G4int tdlr, lvl, plt, cord;
+	G4int tdlr;
 
 	G4LogicalBorderSurface* TedlarSurface[NRows][NLvls][NPlates][NCoord] = { NULL };
 	for (cord = 0; cord < NCoord; cord++)
@@ -420,11 +479,45 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 			{
 				for (tdlr = 0; tdlr < NRows; tdlr++)
 				{
-					TedlarSurface[tdlr][lvl][plt][cord] = new G4LogicalBorderSurface("TedlarStripSurface", physStrip[tdlr][lvl][plt][cord], physTdlr[tdlr][lvl][plt][cord], OptPovTdlr);
+					TedlarSurface[tdlr][lvl][plt][cord] = new G4LogicalBorderSurface("TedlarStripSurface", physExPS[tdlr][lvl][plt][cord], physTdlr[tdlr][lvl][plt][cord], OptPovTdlr);
 				}
 			}
 		}
 	}
+
+	//Border optical fiber - SiPM: mirror reflection
+	G4double reflectivity_SiPM[2] = { 0.99, 0.99 };
+	G4double PhotonEnergySiPM[2] = { 1.9 * eV, 4.0 * eV };
+
+	G4OpticalSurface* OptPovSiPM = new G4OpticalSurface("PovSiPM");
+	OptPovSiPM->SetType(dielectric_metal);
+	OptPovSiPM->SetFinish(ground);
+	OptPovSiPM->SetModel(glisur);
+
+	G4MaterialPropertiesTable* PovSiPM_PT = new G4MaterialPropertiesTable();
+	PovSiPM_PT->AddProperty("REFLECTIVITY", PhotonEnergySiPM, reflectivity_SiPM, 2);
+	OptPovSiPM->SetMaterialPropertiesTable(PovSiPM_PT);
+
+	G4int spm;
+
+	G4LogicalBorderSurface* CoreSiPMSurface[NRows][NLvls][NPlates][NCoord] = { NULL }, * CovSiPMSurface[NRows][NLvls][NPlates][NCoord] = { NULL };
+	for (cord = 0; cord < NCoord; cord++)
+	{
+		for (plt = 0; plt < NPlates; plt++)
+		{
+			for (lvl = 0; lvl < NLvls; lvl++)
+			{
+				for (spm = 0; spm < NRows; spm++)
+				{
+					CoreSiPMSurface[spm][lvl][plt][cord] = new G4LogicalBorderSurface("CoreSiPMSurface", physCore[spm][lvl][plt][cord], physSiPM[spm][lvl][plt][cord], OptPovSiPM);
+					CovSiPMSurface[spm][lvl][plt][cord] = new G4LogicalBorderSurface("CoverSiPMSurface", physCov[spm][lvl][plt][cord], physSiPM[spm][lvl][plt][cord], OptPovSiPM);
+				}
+			}
+		}
+	}
+
+
+	
 
 	//Making world invisible
 	auto UniverseVisAtt = new G4VisAttributes(G4Colour(1.0, 1.0, 1.0));
