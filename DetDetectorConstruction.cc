@@ -230,11 +230,11 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 	G4double StrWidth = 10 * mm;
 	G4double StrHeight = 7 * mm;
 
-	G4double ExPSLength = StrLength + 0.02 * mm;
+	G4double ExPSLength = StrLength;
 	G4double ExPSWidth = StrWidth + 0.02 * mm;
 	G4double ExPSHeight = StrHeight + 0.02 * mm;
 
-	G4double TdlrLength = StrLength + 0.2 * mm;
+	G4double TdlrLength = StrLength;
 	G4double TdlrWidth = StrWidth + 0.2 * mm;
 	G4double TdlrHeight = StrHeight + 0.2 * mm;
 
@@ -255,7 +255,7 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 	//SiPM
 	G4double TdlrThick = 0.1 * mm;				//Variable for placing SiPMs
 
-	G4double SiPMLength = 0.01 * mm;
+	G4double SiPMLength = 0.1 * mm;
 	G4double SiPMWidth = 1.3 * mm;
 	G4double SiPMHeight = 1.3 * mm;
 
@@ -289,8 +289,8 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 	G4double ZOpt = OptRad - 0.5 * GlueHeight;
 
 	G4double XSiPM = 0.5 * (StrLength + SiPMLength);
-	G4double YSiPM = 0 * mm;
-	G4double ZSiPM = 0.5 * StrHeight - GlueHeight + OptRad;
+	G4double YSiPM = YStr;
+	G4double ZSiPM = -0.5 * HollowHeight + GapFS + TdlrHeight - TdlrThick - GlueHeight + OptRad;
 
 	G4double XSh = 0 * mm;
 	G4double YSh = 0 * mm;
@@ -387,9 +387,10 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 
 					solidSiPM[row][level][plate][coord] = new G4Box("sipm_s", 0.5 * SiPMLength, 0.5 * SiPMWidth, 0.5 * SiPMHeight);
 					logicSiPM[row][level][plate][coord] = new G4LogicalVolume(solidSiPM[row][level][plate][coord], SiMaterial, "sipm_l");
-					physSiPM[row][level][plate][coord] = new G4PVPlacement(0, G4ThreeVector(SiPM_X, SiPM_Y, SiPM_Z), logicSiPM[row][level][plate][coord], "SIPM", logicExPS[row][level][plate][coord], false, SiPMNCopy, checkOverlaps);
+					physSiPM[row][level][plate][coord] = new G4PVPlacement(0, G4ThreeVector(SiPM_X, SiPM_Y, SiPM_Z), logicSiPM[row][level][plate][coord], "SIPM", logicHollow[plate][coord], false, SiPMNCopy, checkOverlaps);
 
 					Str_Y += distance;
+					SiPM_Y += distance;
 
 					StrNCopy++;
 					TdlrNCopy++;
@@ -403,6 +404,8 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 				//Next layer of strips + its dislocation related to lower layer
 				Str_Y = YStr + disloc;
 				Str_Z += (TdlrHeight + GapV);
+				SiPM_Y = YSiPM + disloc;
+				SiPM_Z += (TdlrHeight + GapV);
 			}
 
 			//Next shell
@@ -412,6 +415,9 @@ G4VPhysicalVolume* DetDetectorConstruction::Construct()
 			Str_X = XStr;
 			Str_Y = YStr;
 			Str_Z = ZStr;
+			SiPM_X = XSiPM;
+			SiPM_Y = YSiPM;
+			SiPM_Z = ZSiPM;
 		}
 
 		//Moving to next coordinate plane

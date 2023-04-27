@@ -20,7 +20,6 @@ G4double ftheta, fphi, fEkin;
 
 //extern G4double ShellLength, ShellWidth, ShellHeight, ShellThickness, GapH, GapV, GapFP, ScrHeight;
 extern G4double Z0const;
-extern FILE* rdata;
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -57,37 +56,38 @@ void DetPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 	z = Z0const;
 
 	//Scanning particle data from file
-	fscanf(rdata, "%d\t%s\t%d\t%lf\t%lf\t%lf\n", &fEvent, &fpartname, &fpartnum, &ftheta, &fphi, &fEkin);
+	//fscanf(rdata, "%d\t%s\t%d\t%lf\t%lf\t%lf\n", &fEvent, &fpartname, &fpartnum, &ftheta, &fphi, &fEkin);
 
 	//Converting degrees to radians
-	theta = ftheta * pi / 180.0;
-	phi = fphi * pi / 180.0;
+	//theta = ftheta * pi / 180.0;
+	//phi = fphi * pi / 180.0;
 
 	//Setting type of particle to a particle gun
-	G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
+	/* G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
 	G4ParticleDefinition* particle = particleTable->FindParticle(fpartname);
-	fParticleGun->SetParticleDefinition(particle);
+	fParticleGun->SetParticleDefinition(particle); */
 
-	//Particle gun position
+	/* //Particle gun position
 	x0 = x + 1500 * sin(theta) * cos(phi);
 	yy0 = y + 1500 * sin(theta) * sin(phi);
-	z0 = z + 1500 * cos(theta);
+	z0 = z + 1500 * cos(theta); */
 
-	fParticleGun->SetParticlePosition(G4ThreeVector(x0 * mm, yy0 * mm, z0 * mm));
+	fParticleGun->SetParticlePosition(G4ThreeVector(0 * mm, 0 * mm, 1100 * mm));
 
-	//Particle momentum direction
+	/* //Particle momentum direction
 	ux = -sin(theta) * cos(phi);
 	uy = -sin(theta) * sin(phi);
-	uz = -cos(theta);
+	uz = -cos(theta); */
 
-	fParticleGun->SetParticleMomentumDirection(G4ThreeVector(ux, uy, uz));
+	fParticleGun->SetParticleMomentumDirection(G4ThreeVector(0, 0, -1));
 
 	//Particle kinetic energy
-	E0 = fEkin;
+	//E0 = fEkin;
 
-	fParticleGun->SetParticleEnergy(E0 * GeV);
+	fParticleGun->SetParticleEnergy(4. * GeV);
 	fParticleGun->GeneratePrimaryVertex(anEvent);
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
 
