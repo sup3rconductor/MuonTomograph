@@ -11,14 +11,14 @@
 #include "Randomize.hh"
 #include "G4PhysicalConstants.hh"
 
-G4double theta, phi, ux, uy, uz, E0;
-G4double x, y, z, x0, yy0, z0;
-char fpartname[7];
-G4int fEvent, fpartnum;
-G4double ftheta, fphi, fEkin;
+//G4double theta, phi, ux, uy, uz, E0;
+//char fpartname[7];							//Закомментировал, пока ничего с файлов не считываем, проверяем работу программы на вертикальном мюоне
+//G4int fEvent, fpartnum;
+//G4double ftheta, fphi, fEkin;
 
 
 //extern G4double ShellLength, ShellWidth, ShellHeight, ShellThickness, GapH, GapV, GapFP, ScrHeight;
+G4double x, y, z, x0, yy0, z0;
 extern G4double Z0const;
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
